@@ -76,7 +76,6 @@ export default async function handler(req, res) {
     ],
     generationConfig: {
       response_mime_type: 'application/json',
-      thinking_level: 'low',
     },
   };
 
