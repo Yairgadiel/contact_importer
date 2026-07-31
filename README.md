@@ -18,7 +18,7 @@ Set `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) in Vercel project settings or a local
 ## Development
 
 ```bash
-npm run dev
+npm start
 ```
 
 ## Deploy

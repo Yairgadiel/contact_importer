@@ -4,7 +4,7 @@
   "private": true,
   "description": "PWA + Vercel serverless: scan Hebrew photos, map detected columns to contact fields, export vCard.",
   "scripts": {
-    "dev": "vercel dev",
+    "start": "vercel dev --yes",
     "build": "vercel build",
     "deploy": "vercel --prod"
   },
