@@ -560,7 +560,7 @@
         return;
       }
       const vcf = buildVCards();
-      const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8' });
+      const blob = new Blob([vcf], { type: 'text/vcard' });
       let fileName;
       if (mappingContacts.length === 1) {
         const lines = mappingContacts[0].lines;
@@ -574,7 +574,7 @@
       } else {
         fileName = 'contacts_' + mappingContacts.length + '.vcf';
       }
-      const file = new File([blob], fileName, { type: 'text/vcard;charset=utf-8' });
+      const file = new File([blob], fileName, { type: 'text/vcard' });
       try {
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title: fileName });
