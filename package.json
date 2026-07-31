@@ -1,0 +1,17 @@
+{
+  "name": "contact-importer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PWA + Vercel serverless: scan Hebrew photos, map detected columns to contact fields, export vCard.",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "vercel build",
+    "deploy": "vercel --prod"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "vercel": "latest"
+  }
+}

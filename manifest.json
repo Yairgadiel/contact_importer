@@ -1,0 +1,23 @@
+{
+  "name": "מגע — סורק כרטיסי ביקור בעברית",
+  "short_name": "מגע",
+  "description": "סרוק תמונה בעברית, זהה את השורות, מפה אותן לשדות קשר וייצא קובץ vCard.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "he",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "categories": ["business", "utilities", "productivity"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20512%20512'%3E%3Crect%20width='512'%20height='512'%20rx='104'%20fill='%230891b2'/%3E%3Crect%20x='112'%20y='96'%20width='288'%20height='320'%20rx='24'%20fill='%230f172a'/%3E%3Crect%20x='112'%20y='96'%20width='288'%20height='320'%20rx='24'%20fill='none'%20stroke='%2322d3ee'%20stroke-width='24'/%3E%3Ccircle%20cx='256'%20cy='200'%20r='56'%20fill='%23e2e8f0'/%3E%3Cpath%20d='M160%20352c16-56%2052-84%2096-84s80%2028%2096%2084v16H160z'%20fill='%237dd3fc'/%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
