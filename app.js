@@ -535,24 +535,6 @@
       });
     }
 
-    function renderSchemaChips() {
-      const wrap = document.getElementById('schemaChips');
-      wrap.innerHTML = '';
-      const targets = activeTargets();
-      if (!targets.length) { wrap.classList.add('hidden'); return; }
-      wrap.classList.remove('hidden');
-      const p = document.createElement('p');
-      p.className = 'w-full text-xs text-slate-500';
-      p.textContent = t('scan.active_fields');
-      wrap.appendChild(p);
-      targets.forEach(function (f) {
-        const span = document.createElement('span');
-        span.className = 'rounded-full bg-slate-800 px-2.5 py-1 text-[11px] text-slate-300 ring-1 ring-slate-700';
-        span.textContent = f.label;
-        wrap.appendChild(span);
-      });
-    }
-
     function openConfig() {
       snapshot = JSON.parse(JSON.stringify(schema));
       renderStandardToggles();
@@ -582,7 +564,6 @@
     document.getElementById('saveConfigBtn').addEventListener('click', function () {
       schema.customs = schema.customs.filter(function (c) { return c.label.trim(); });
       saveSchema();
-      renderSchemaChips();
       closeConfig();
       if (!resultsSection.classList.contains('hidden')) renderResults();
       toast(t('toast.config_saved'));
@@ -596,7 +577,6 @@
     });
 
     // ---- boot ----
-    renderSchemaChips();
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {

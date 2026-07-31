@@ -14,9 +14,8 @@
       formats: 'JPG · PNG · WebP · אפשר גם הדבקה (Ctrl+V)',
       camera: 'צילום מהמצלמה',
       analyze: 'סריקה וזיהוי שורות',
-      analyze_note: 'התמונה נשלחת ל- Gemini Flash לשם זיהוי הטקסט',
+      analyze_note: 'התמונה נשלחת לשם זיהוי הטקסט',
       loading: 'מזהה את השורות בתמונה…',
-      active_fields: 'שדות המיפוי הפעילים:',
     },
     results: {
       title: 'השורות שזוהו · מיפוי לשדות',
