@@ -5,7 +5,6 @@
   "description": "PWA + Vercel serverless: scan Hebrew photos, map detected columns to contact fields, export vCard.",
   "scripts": {
     "start": "vercel dev --yes",
-    "build": "vercel build",
     "deploy": "vercel --prod"
   },
   "engines": {
