@@ -1,0 +1,43 @@
+name: version
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stamp version with push time
+        env:
+          TZ: Asia/Jerusalem
+        run: |
+          node -e '
+            const fs = require("fs");
+            const file = "i18n.js";
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, "0");
+            const ts = pad(now.getDate()) + "." + pad(now.getMonth() + 1) + "." + now.getFullYear() + " " + pad(now.getHours()) + ":" + pad(now.getMinutes());
+            const label = "גרסה " + ts;
+            let s = fs.readFileSync(file, "utf8");
+            const re = /(version:\s*["'])([^"']*)(["'])/;
+            if (re.test(s)) {
+              const next = s.replace(re, "$1" + label + "$3");
+              if (next !== s) fs.writeFileSync(file, next);
+            }
+          '
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "version-bot"
+          git config user.email "version-bot@users.noreply.github.com"
+          git add i18n.js
+          if ! git diff --cached --quiet; then
+            git commit -m "Update version timestamp"
+            git push
+          fi
