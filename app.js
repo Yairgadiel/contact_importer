@@ -349,16 +349,6 @@
         head.className = 'mb-2 flex items-center gap-2';
         head.innerHTML = '<span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-slate-800 text-[11px] font-bold text-cyan-300 ring-1 ring-slate-700"></span><span class="text-xs font-semibold text-cyan-300">' + t('results.contact') + '</span>';
         head.firstElementChild.textContent = String(ci + 1);
-
-        const shareBtn = document.createElement('button');
-        shareBtn.type = 'button';
-        shareBtn.className = 'ml-auto shrink-0 rounded-lg bg-cyan-500/15 px-2 py-1 text-[11px] font-semibold text-cyan-300 ring-1 ring-cyan-500/30 active:bg-cyan-500/25';
-        shareBtn.textContent = t('results.share_contact');
-        shareBtn.addEventListener('click', function () {
-          shareVcf(buildVCardForContact(contact), contactFileName(contact));
-          toast(t('toast.vcard_ready'));
-        });
-        head.appendChild(shareBtn);
         section.appendChild(head);
 
         const body = document.createElement('div');
@@ -553,17 +543,6 @@
       return blocks.join('\r\n') + '\r\n';
     }
 
-    function contactFileName(contact) {
-      const lines = contact.lines;
-      const first = lines.filter(function (r) { return r.target === 'first_name'; })
-        .map(function (r) { return r.text.trim(); }).join(' ');
-      const last = lines.filter(function (r) { return r.target === 'last_name'; })
-        .map(function (r) { return r.text.trim(); }).join(' ');
-      return (first || last)
-        ? 'contact_' + [first, last].filter(Boolean).join('_').replace(/[^\w\u0590-\u05FF]+/g, '_') + '.vcf'
-        : 'contact.vcf';
-    }
-
     async function shareVcf(vcf, fileName) {
       const blob = new Blob([vcf], { type: 'text/vcard' });
       const file = new File([blob], fileName, { type: 'text/vcard' });
@@ -600,9 +579,19 @@
         return;
       }
       const vcf = buildVCards();
-      const fileName = mappingContacts.length === 1
-        ? contactFileName(mappingContacts[0])
-        : 'contacts_' + mappingContacts.length + '.vcf';
+      let fileName;
+      if (mappingContacts.length === 1) {
+        const lines = mappingContacts[0].lines;
+        const first = lines.filter(function (r) { return r.target === 'first_name'; })
+          .map(function (r) { return r.text.trim(); }).join(' ');
+        const last = lines.filter(function (r) { return r.target === 'last_name'; })
+          .map(function (r) { return r.text.trim(); }).join(' ');
+        fileName = (first || last)
+          ? 'contact_' + [first, last].filter(Boolean).join('_').replace(/[^\w\u0590-\u05FF]+/g, '_') + '.vcf'
+          : 'contact.vcf';
+      } else {
+        fileName = 'contacts_' + mappingContacts.length + '.vcf';
+      }
       shareVcf(vcf, fileName);
       toast(t('toast.vcard_ready'));
     });
