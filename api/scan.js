@@ -53,8 +53,13 @@ export default async function handler(req, res) {
     .filter(Boolean);
 
   const prompt = [
-    'You are a precise OCR and contact-data extraction assistant.',
+    'You are a precision OCR and contact-data extraction assistant, specialized in Hebrew print and handwriting.',
     'Analyze the image provided below (typically a Hebrew business card, ID card, driver license, or handwritten contact note).',
+    '',
+    'OCR ACCURACY RULES:',
+    '1. Read character geometry carefully. Attend to tall vertical strokes (ascenders) that commonly represent the Hebrew letter Lamed (ל) and similar letters, and carefully distinguish closely related letters (e.g. ד/ר, כ/ב, ה/ח, מ/ס, ת/ב).',
+    '2. When a line is clearly a person name, favor standard, recognizable Hebrew name patterns. Do not invent rare words, extra punctuation, or non-existent special characters unless they are explicitly drawn in the image.',
+    '3. Preserve the exact text once read — do not "clean up" legitimate content (numbers, IDs, addresses) beyond unambiguous OCR mistakes.',
     '',
     'The image may contain ONE contact or MULTIPLE contacts (e.g. several business cards, a contact list, or a multi-column layout).',
     '',

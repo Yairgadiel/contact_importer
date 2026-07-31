@@ -149,6 +149,7 @@
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, w, h);
+      ctx.filter = 'contrast(150%) brightness(110%)';
       ctx.drawImage(img, 0, 0, w, h);
       return canvas.toDataURL('image/jpeg', 0.85);
     }
