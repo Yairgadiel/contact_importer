@@ -316,11 +316,13 @@
       const totalLines = mappingContacts.reduce(function (n, ct) { return n + ct.lines.length; }, 0);
       const hint = document.getElementById('multiContactHint');
       const hintWa = document.getElementById('multiContactHintWa');
+      const iosLabel = document.getElementById('iosHintLabel');
       if (!totalLines) {
         wrap.innerHTML = '<p class="rounded-xl bg-slate-800/60 px-4 py-6 text-center text-sm text-slate-400">' + t('results.empty') + '</p>';
         metaEl.classList.add('hidden');
         hint.classList.add('hidden');
         hintWa.classList.add('hidden');
+        iosLabel.classList.add('hidden');
         return;
       }
 
@@ -328,11 +330,14 @@
       metaEl.classList.remove('hidden');
 
       if (mappingContacts.length > 1) {
+        iosLabel.textContent = t('results.ios_label');
+        iosLabel.classList.remove('hidden');
         document.getElementById('multiContactHintText').textContent = t('results.multi_hint', { n: mappingContacts.length });
         hint.classList.remove('hidden');
         document.getElementById('multiContactHintWaText').textContent = t('results.multi_hint_wa');
         hintWa.classList.remove('hidden');
       } else {
+        iosLabel.classList.add('hidden');
         hint.classList.add('hidden');
         hintWa.classList.add('hidden');
       }
