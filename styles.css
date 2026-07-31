@@ -17,6 +17,7 @@
       box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15);
     }
     .field-input::placeholder { color: #64748b; }
+    .field-input.digits { direction: ltr; text-align: right; }
     select.field-input { cursor: pointer; }
     ::selection { background: rgba(34, 211, 238, 0.3); }
   

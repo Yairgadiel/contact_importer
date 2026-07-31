@@ -358,6 +358,16 @@
           input.className = 'field-input';
           input.value = line.text || '';
           input.setAttribute('dir', 'rtl');
+          function applyPhoneDir() {
+            if (line.target === 'phone') {
+              input.setAttribute('dir', 'ltr');
+              input.classList.add('digits');
+            } else {
+              input.setAttribute('dir', 'rtl');
+              input.classList.remove('digits');
+            }
+          }
+          applyPhoneDir();
           input.addEventListener('input', function () { line.text = input.value; });
 
           const select = document.createElement('select');
@@ -392,7 +402,10 @@
           const hasOpt = Array.prototype.some.call(select.options, function (o) { return o.value === line.target; });
           select.value = hasOpt ? line.target : 'ignore';
           line.target = select.value;
-          select.addEventListener('change', function () { line.target = select.value; });
+          select.addEventListener('change', function () {
+            line.target = select.value;
+            applyPhoneDir();
+          });
 
           box.appendChild(input);
           box.appendChild(select);
@@ -525,7 +538,18 @@
       return blocks.join('\r\n') + '\r\n';
     }
 
-    document.getElementById('saveContactBtn').addEventListener('click', function () {
+    function downloadBlob(blob, fileName) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    }
+
+    document.getElementById('saveContactBtn').addEventListener('click', async function () {
       const any = mappingContacts.some(function (ct) {
         return ct.lines.some(function (line) {
           return line.target !== 'ignore' && (line.text || '').trim();
@@ -537,9 +561,6 @@
       }
       const vcf = buildVCards();
       const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
       let fileName;
       if (mappingContacts.length === 1) {
         const lines = mappingContacts[0].lines;
@@ -553,11 +574,16 @@
       } else {
         fileName = 'contacts_' + mappingContacts.length + '.vcf';
       }
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+      const file = new File([blob], fileName, { type: 'text/vcard;charset=utf-8' });
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: fileName });
+        } else {
+          downloadBlob(blob, fileName);
+        }
+      } catch (err) {
+        if (err && err.name !== 'AbortError') downloadBlob(blob, fileName);
+      }
       toast(t('toast.vcard_ready'));
     });
 
