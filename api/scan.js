@@ -102,6 +102,7 @@ export default async function handler(req, res) {
 
   let resp = null;
   let lastBody = null;
+  let retryable = false;
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt - 1] || 8000));
@@ -113,20 +114,29 @@ export default async function handler(req, res) {
       });
     } catch (err) {
       lastBody = { error: { message: `Could not reach the Gemini API: ${err.message}` } };
+      retryable = true;
       continue;
     }
     lastBody = await resp.json().catch(() => ({}));
-    if (resp.ok) break;
+    if (resp.ok) {
+      retryable = false;
+      break;
+    }
     const msg = lastBody?.error?.message || '';
     const transient = resp.status === 429 || resp.status >= 500 || /high demand|temporar/i.test(msg);
-    if (!transient) break;
+    if (transient) {
+      retryable = true;
+      continue;
+    }
+    retryable = false;
+    break;
   }
 
   const gemini = lastBody || {};
   if (!resp || !resp.ok) {
     const msg = gemini?.error?.message || `Gemini API error (HTTP ${resp ? resp.status : 'unknown'})`;
     const status = resp && resp.status >= 500 ? 502 : resp ? resp.status : 502;
-    return res.status(status).json({ error: msg });
+    return res.status(status).json({ error: msg, retryable: retryable });
   }
 
   const text = (gemini?.candidates?.[0]?.content?.parts || [])

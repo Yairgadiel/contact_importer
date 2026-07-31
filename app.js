@@ -107,6 +107,31 @@
       return exists ? t : 'ignore';
     }
 
+    function mergeStandalonePrefixes(contact) {
+      const isPrefix = function (t) {
+        return /^0\d{1,2}$/.test(t.trim());
+      };
+      const out = [];
+      const lines = contact.lines;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const txt = (line.text || '').trim();
+        if (isPrefix(txt) && i + 1 < lines.length) {
+          const next = lines[i + 1];
+          const nextClean = (next.text || '').replace(/[^\d]/g, '');
+          if (/^\d{5,8}$/.test(nextClean) && !nextClean.startsWith('0')) {
+            const merged = txt + nextClean;
+            const phoneActive = activeTargets().some(function (x) { return x.key === 'phone'; });
+            out.push({ id: line.id, text: merged, target: phoneActive ? 'phone' : initialTarget(merged) });
+            i += 1;
+            continue;
+          }
+        }
+        out.push(line);
+      }
+      return { id: contact.id, lines: out };
+    }
+
     // ---- DOM refs ----
     const fileInput = document.getElementById('fileInput');
     const cameraInput = document.getElementById('cameraInput');
@@ -232,7 +257,11 @@
           }),
         });
         const data = await res.json().catch(function () { return {}; });
-        if (!res.ok) throw new Error(data.error || t('status.server_error'));
+        if (!res.ok) {
+          const err = new Error(data.error || t('status.server_error'));
+          err.retryable = !!data.retryable;
+          throw err;
+        }
         const contacts = Array.isArray(data.contacts) ? data.contacts : [];
         mappingContacts = contacts
           .map(function (ct) {
@@ -253,6 +282,7 @@
               }),
             };
           })
+          .map(mergeStandalonePrefixes)
           .filter(function (ct) { return ct.lines.length > 0; });
         setLoading(false);
         renderResults();
@@ -265,7 +295,12 @@
         }
       } catch (err) {
         setLoading(false);
-        setStatus(err && err.message ? err.message : t('status.generic_error'), true);
+        setStatus(
+          err && err.retryable
+            ? t('status.try_again')
+            : err && err.message ? err.message : t('status.generic_error'),
+          true
+        );
       }
     }
 
@@ -279,14 +314,23 @@
       const metaEl = document.getElementById('resultsMeta');
 
       const totalLines = mappingContacts.reduce(function (n, ct) { return n + ct.lines.length; }, 0);
+      const hint = document.getElementById('multiContactHint');
       if (!totalLines) {
         wrap.innerHTML = '<p class="rounded-xl bg-slate-800/60 px-4 py-6 text-center text-sm text-slate-400">' + t('results.empty') + '</p>';
         metaEl.classList.add('hidden');
+        hint.classList.add('hidden');
         return;
       }
 
       countEl.textContent = totalLines + ' ' + t('results.count');
       metaEl.classList.remove('hidden');
+
+      if (mappingContacts.length > 1) {
+        hint.textContent = t('results.multi_hint', { n: mappingContacts.length });
+        hint.classList.remove('hidden');
+      } else {
+        hint.classList.add('hidden');
+      }
 
       const targets = activeTargets();
       const stdOpts = targets.filter(function (t) { return t.type === 'standard'; });
@@ -428,6 +472,7 @@
       });
 
       const lines = ['BEGIN:VCARD', 'VERSION:3.0'];
+      lines.push('UID:' + (contact.id || 'c') + '.' + Date.now() + '@contactimporter');
 
       const first = (groups.first_name || []).join(' ');
       const last = (groups.last_name || []).join(' ');
