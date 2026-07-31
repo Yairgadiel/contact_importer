@@ -48,20 +48,33 @@ export default async function handler(req, res) {
     }
   }
 
+  const fieldKeys = (Array.isArray(fields) ? fields : [])
+    .map(function (f) { return f && f.key; })
+    .filter(Boolean);
+
   const prompt = [
-    'You are a precise OCR and data-extraction assistant for contact information.',
+    'You are a precise OCR and contact-data extraction assistant.',
     'Analyze the image provided below (typically a Hebrew business card, ID card, driver license, or handwritten contact note).',
     '',
-    'Extract EVERY distinct line/item of contact information that is visible in the image — such as person names, phone numbers, email addresses, websites, company name, job title, street addresses, ID numbers, and any other notes.',
+    'The image may contain ONE contact or MULTIPLE contacts (e.g. several business cards, a contact list, or a multi-column layout).',
     '',
-    'Return ONLY a valid JSON object with a single "columns" key, in exactly this structure (no markdown, no code fences, no commentary):',
-    '{ "columns": [ { "id": 1, "original_text": "..." }, { "id": 2, "original_text": "..." } ] }',
+    'STEP 1 — Group by person: use the spatial layout (position, alignment, gaps, column boundaries) to group text lines that belong to the same person/contact. Do NOT merge different people into one contact, and do NOT split one person across several contacts.',
+    'STEP 2 — For each contact, list ALL of its lines.',
+    'STEP 3 — For each line, choose the best matching field key and put it in "suggested".',
+    '',
+    'Available "suggested" keys: ' +
+      (fieldKeys.length
+        ? fieldKeys.join(', ') + ', ignore'
+        : 'first_name, last_name, phone, email, organization, title, address, notes, ignore'),
+    '',
+    'Return ONLY a valid JSON object (no markdown, no code fences, no commentary) in EXACTLY this structure:',
+    '{ "contacts": [ { "lines": [ { "text": "...", "suggested": "first_name" }, { "text": "...", "suggested": "phone" } ] } ] }',
     '',
     'RULES:',
-    '1. "original_text" must preserve the text EXACTLY as it appears in the image (usually Hebrew) — do not translate, rephrase, or merge values.',
-    '2. Each detected item keeps its own sequential "id" starting from 1.',
-    '3. Keep phone numbers and ID numbers exactly as printed.',
-    '4. If the image contains no readable contact text, return { "columns": [] }.',
+    '1. "text" must preserve each line EXACTLY as it appears in the image (usually Hebrew) — do not translate, rephrase, or merge values.',
+    '2. Keep phone numbers and ID numbers exactly as printed.',
+    '3. A single contact must still be wrapped in the "contacts" array as one element.',
+    '4. If the image contains no readable contact text, return { "contacts": [] }.',
   ].join('\n');
 
   const payload = {
@@ -115,20 +128,28 @@ export default async function handler(req, res) {
     }
   }
 
-  const raw = Array.isArray(parsed?.columns) ? parsed.columns : [];
-  const columns = raw
+  const rawContacts = Array.isArray(parsed?.contacts) ? parsed.contacts : [];
+  const contacts = rawContacts
     .filter((c) => c && typeof c === 'object')
-    .map((c, i) => ({
-      id: typeof c.id === 'number' ? c.id : i + 1,
-      original_text:
-        typeof c.original_text === 'string'
-          ? c.original_text
-          : c.original_text != null
-            ? String(c.original_text)
-            : '',
-    }))
-    .filter((c) => c.original_text.trim() !== '');
+    .map((c, ci) => {
+      const rawLines = Array.isArray(c.lines) ? c.lines : [];
+      const lines = rawLines
+        .filter((l) => l && typeof l === 'object')
+        .map((l, li) => ({
+          id: typeof l.id === 'number' ? l.id : li + 1,
+          text:
+            typeof l.text === 'string'
+              ? l.text
+              : l.text != null
+                ? String(l.text)
+                : '',
+          suggested: typeof l.suggested === 'string' ? l.suggested : 'ignore',
+        }))
+        .filter((l) => l.text.trim() !== '');
+      return { id: ci + 1, lines };
+    })
+    .filter((c) => c.lines.length > 0);
 
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({ columns, requested_fields: Array.isArray(fields) ? fields : [] });
+  res.status(200).json({ contacts, requested_fields: Array.isArray(fields) ? fields : [] });
 }

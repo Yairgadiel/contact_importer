@@ -121,7 +121,7 @@
     const toastInner = document.getElementById('toastInner');
 
     let selectedFile = null;
-    let mappingRows = [];
+    let mappingContacts = [];
     let modalOpen = false;
     let snapshot = null;
     let toastTimer = null;
@@ -232,18 +232,33 @@
         });
         const data = await res.json().catch(function () { return {}; });
         if (!res.ok) throw new Error(data.error || t('status.server_error'));
-        const columns = Array.isArray(data.columns) ? data.columns : [];
-        mappingRows = columns.map(function (c) {
-          const text = typeof c.original_text === 'string'
-            ? c.original_text
-            : c.original_text != null ? String(c.original_text) : '';
-          return { id: c.id, original_text: text, target: initialTarget(text) };
-        });
+        const contacts = Array.isArray(data.contacts) ? data.contacts : [];
+        mappingContacts = contacts
+          .map(function (ct) {
+            const rawLines = Array.isArray(ct.lines) ? ct.lines : [];
+            return {
+              id: ct.id,
+              lines: rawLines.map(function (l) {
+                const text = typeof l.text === 'string'
+                  ? l.text
+                  : l.text != null ? String(l.text) : '';
+                const suggested = typeof l.suggested === 'string' ? l.suggested : '';
+                const exists = activeTargets().some(function (x) { return x.key === suggested; });
+                return {
+                  id: l.id,
+                  text: text,
+                  target: exists ? suggested : initialTarget(text),
+                };
+              }),
+            };
+          })
+          .filter(function (ct) { return ct.lines.length > 0; });
         setLoading(false);
         renderResults();
         showResults();
-        if (mappingRows.length) {
-          toast(t('toast.rows_found', { n: mappingRows.length }));
+        const totalLines = mappingContacts.reduce(function (n, ct) { return n + ct.lines.length; }, 0);
+        if (totalLines) {
+          toast(t('toast.rows_found', { n: totalLines }));
         } else {
           setStatus(t('status.no_data'), true);
         }
@@ -262,73 +277,85 @@
       const countEl = document.getElementById('resultsCount');
       const metaEl = document.getElementById('resultsMeta');
 
-      if (!mappingRows.length) {
+      const totalLines = mappingContacts.reduce(function (n, ct) { return n + ct.lines.length; }, 0);
+      if (!totalLines) {
         wrap.innerHTML = '<p class="rounded-xl bg-slate-800/60 px-4 py-6 text-center text-sm text-slate-400">' + t('results.empty') + '</p>';
         metaEl.classList.add('hidden');
         return;
       }
 
-      countEl.textContent = mappingRows.length + ' ' + t('results.count');
+      countEl.textContent = totalLines + ' ' + t('results.count');
       metaEl.classList.remove('hidden');
 
       const targets = activeTargets();
       const stdOpts = targets.filter(function (t) { return t.type === 'standard'; });
       const customOpts = targets.filter(function (t) { return t.type === 'custom'; });
 
-      mappingRows.forEach(function (row, idx) {
-        const box = document.createElement('div');
-        box.className = 'rounded-xl bg-slate-800/70 p-3 ring-1 ring-slate-700/60';
+      mappingContacts.forEach(function (contact, ci) {
+        const section = document.createElement('div');
+        section.className = 'rounded-2xl bg-slate-900/60 p-3 ring-1 ring-cyan-500/20';
 
         const head = document.createElement('div');
         head.className = 'mb-2 flex items-center gap-2';
-        head.innerHTML = '<span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-bold text-cyan-300 ring-1 ring-slate-700"></span><span class="text-[11px] text-slate-500">' + t('results.row_label') + '</span>';
-        head.firstElementChild.textContent = String(idx + 1);
+        head.innerHTML = '<span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-slate-800 text-[11px] font-bold text-cyan-300 ring-1 ring-slate-700"></span><span class="text-xs font-semibold text-cyan-300">' + t('results.contact') + '</span>';
+        head.firstElementChild.textContent = String(ci + 1);
+        section.appendChild(head);
 
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'field-input';
-        input.value = row.original_text || '';
-        input.setAttribute('dir', 'rtl');
-        input.addEventListener('input', function () { row.original_text = input.value; });
+        const body = document.createElement('div');
+        body.className = 'space-y-2';
 
-        const select = document.createElement('select');
-        select.className = 'field-input mt-2';
-        if (stdOpts.length) {
-          const og = document.createElement('optgroup');
-          og.label = t('results.group_standard');
-          stdOpts.forEach(function (t) {
-            const o = document.createElement('option');
-            o.value = t.key;
-            o.textContent = t.label;
-            og.appendChild(o);
-          });
-          select.appendChild(og);
-        }
-        if (customOpts.length) {
-          const og = document.createElement('optgroup');
-          og.label = t('results.group_custom');
-          customOpts.forEach(function (t) {
-            const o = document.createElement('option');
-            o.value = t.key;
-            o.textContent = t.label;
-            og.appendChild(o);
-          });
-          select.appendChild(og);
-        }
-        const ig = document.createElement('option');
-        ig.value = 'ignore';
-        ig.textContent = t('results.ignore');
-        select.appendChild(ig);
+        contact.lines.forEach(function (line) {
+          const box = document.createElement('div');
+          box.className = 'rounded-xl bg-slate-800/70 p-2.5 ring-1 ring-slate-700/60';
 
-        const hasOpt = Array.prototype.some.call(select.options, function (o) { return o.value === row.target; });
-        select.value = hasOpt ? row.target : 'ignore';
-        row.target = select.value;
-        select.addEventListener('change', function () { row.target = select.value; });
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'field-input';
+          input.value = line.text || '';
+          input.setAttribute('dir', 'rtl');
+          input.addEventListener('input', function () { line.text = input.value; });
 
-        box.appendChild(head);
-        box.appendChild(input);
-        box.appendChild(select);
-        wrap.appendChild(box);
+          const select = document.createElement('select');
+          select.className = 'field-input mt-2';
+          if (stdOpts.length) {
+            const og = document.createElement('optgroup');
+            og.label = t('results.group_standard');
+            stdOpts.forEach(function (t) {
+              const o = document.createElement('option');
+              o.value = t.key;
+              o.textContent = t.label;
+              og.appendChild(o);
+            });
+            select.appendChild(og);
+          }
+          if (customOpts.length) {
+            const og = document.createElement('optgroup');
+            og.label = t('results.group_custom');
+            customOpts.forEach(function (t) {
+              const o = document.createElement('option');
+              o.value = t.key;
+              o.textContent = t.label;
+              og.appendChild(o);
+            });
+            select.appendChild(og);
+          }
+          const ig = document.createElement('option');
+          ig.value = 'ignore';
+          ig.textContent = t('results.ignore');
+          select.appendChild(ig);
+
+          const hasOpt = Array.prototype.some.call(select.options, function (o) { return o.value === line.target; });
+          select.value = hasOpt ? line.target : 'ignore';
+          line.target = select.value;
+          select.addEventListener('change', function () { line.target = select.value; });
+
+          box.appendChild(input);
+          box.appendChild(select);
+          body.appendChild(box);
+        });
+
+        section.appendChild(body);
+        wrap.appendChild(section);
       });
     }
 
@@ -344,7 +371,7 @@
     }
 
     document.getElementById('resetBtn').addEventListener('click', function () {
-      mappingRows = [];
+      mappingContacts = [];
       hideResults();
       selectedFile = null;
       fileInput.value = '';
@@ -388,13 +415,13 @@
       return clean;
     }
 
-    function buildVCard() {
+    function buildVCardForContact(contact) {
       const targets = activeTargets();
       const groups = {};
-      mappingRows.forEach(function (row) {
-        const v = (row.original_text || '').trim();
+      contact.lines.forEach(function (line) {
+        const v = (line.text || '').trim();
         if (!v) return;
-        const t = row.target;
+        const t = line.target;
         if (!t || t === 'ignore') return;
         (groups[t] = groups[t] || []).push(v);
       });
@@ -444,29 +471,43 @@
       if (noteParts.length) lines.push('NOTE;CHARSET=UTF-8:' + noteParts.join('\\n'));
 
       lines.push('END:VCARD');
-      return lines.map(foldLine).join('\r\n') + '\r\n';
+      return lines.map(foldLine).join('\r\n');
+    }
+
+    function buildVCards() {
+      const blocks = mappingContacts.map(buildVCardForContact);
+      return blocks.join('\r\n') + '\r\n';
     }
 
     document.getElementById('saveContactBtn').addEventListener('click', function () {
-      const any = mappingRows.some(function (r) {
-        return r.target !== 'ignore' && (r.original_text || '').trim();
+      const any = mappingContacts.some(function (ct) {
+        return ct.lines.some(function (line) {
+          return line.target !== 'ignore' && (line.text || '').trim();
+        });
       });
       if (!any) {
         toast(t('toast.no_mapping'));
         return;
       }
-      const vcf = buildVCard();
+      const vcf = buildVCards();
       const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const first = (mappingRows.filter(function (r) { return r.target === 'first_name'; })
-        .map(function (r) { return r.original_text.trim(); }).join(' '));
-      const last = (mappingRows.filter(function (r) { return r.target === 'last_name'; })
-        .map(function (r) { return r.original_text.trim(); }).join(' '));
-      a.download = (first || last)
-        ? 'contact_' + [first, last].filter(Boolean).join('_').replace(/[^\w\u0590-\u05FF]+/g, '_') + '.vcf'
-        : 'contact.vcf';
+      let fileName;
+      if (mappingContacts.length === 1) {
+        const lines = mappingContacts[0].lines;
+        const first = lines.filter(function (r) { return r.target === 'first_name'; })
+          .map(function (r) { return r.text.trim(); }).join(' ');
+        const last = lines.filter(function (r) { return r.target === 'last_name'; })
+          .map(function (r) { return r.text.trim(); }).join(' ');
+        fileName = (first || last)
+          ? 'contact_' + [first, last].filter(Boolean).join('_').replace(/[^\w\u0590-\u05FF]+/g, '_') + '.vcf'
+          : 'contact.vcf';
+      } else {
+        fileName = 'contacts_' + mappingContacts.length + '.vcf';
+      }
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
