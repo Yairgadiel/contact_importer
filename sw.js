@@ -1,4 +1,4 @@
-var CACHE = 'maga-v1';
+var CACHE = 'maga-v2';
 var PRECACHE = [
   './',
   './index.html',
@@ -14,9 +14,7 @@ self.addEventListener('install', function (event) {
     caches.open(CACHE)
       .then(function (cache) {
         return Promise.allSettled(PRECACHE.map(function (url) {
-          return caches.match(url).then(function (hit) {
-            return hit || cache.add(url);
-          });
+          return cache.add(url);
         }));
       })
       .then(function () { return self.skipWaiting(); })
@@ -59,14 +57,18 @@ self.addEventListener('fetch', function (event) {
 
   event.respondWith(
     caches.match(request).then(function (cached) {
-      if (cached) return cached;
-      return fetch(request).then(function (res) {
+      var network = fetch(request).then(function (res) {
         if (res.ok) {
           var copy = res.clone();
           caches.open(CACHE).then(function (c) { c.put(request, copy); });
         }
         return res;
       });
+      if (cached) {
+        network.catch(function () {});
+        return cached;
+      }
+      return network;
     })
   );
 });
