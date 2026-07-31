@@ -2,9 +2,10 @@
   'use strict';
 
   const TEXTS = {
-    title: 'מגע · סורק כרטיסי ביקור',
+    title: 'ייבוא אנשי קשר · סורק כרטיסי ביקור',
+    description: 'סרוק תמונות בעברית, מפה את השורות שזוהו לשדות קשר וייצא קובץ vCard.',
     app: {
-      name: 'מגע',
+      name: 'ייבוא אנשי קשר',
       tagline: 'סורק כרטיסי ביקור בעברית',
       config: 'הגדרת שדות',
     },
@@ -67,9 +68,7 @@
       no_data: 'לא זוהו נתונים בתמונה. נסו תמונה חדה יותר.',
       generic_error: 'אירעה שגיאה, נסו שוב',
       server_error: 'השרת החזיר שגיאה',
-    },
-    vcard: {
-      default_name: 'Contact',
+      image_read_error: 'לא ניתן לקרוא את התמונה',
     },
     footer: {
       text: 'נתוני התמונה נשלחים ל- Gemini API לצורך זיהוי הטקסט בלבד.\nההגדרות והמיפוי נשמרים מקומית במכשיר.',
@@ -112,5 +111,9 @@
   window.applyTexts = applyTexts;
 
   document.title = t('title');
+  const descMeta = document.querySelector('meta[name="description"]');
+  if (descMeta) descMeta.setAttribute('content', t('description'));
+  const appleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+  if (appleTitle) appleTitle.setAttribute('content', t('app.name'));
   applyTexts();
 })();

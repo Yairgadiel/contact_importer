@@ -5,6 +5,7 @@ var PRECACHE = [
   './manifest.json',
   './app.js',
   './styles.css',
+  './i18n.js',
   'https://cdn.tailwindcss.com'
 ];
 

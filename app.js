@@ -6,14 +6,14 @@
     const API_URL = '/api/scan';
 
     const STANDARD_FIELDS = [
-      { key: 'first_name', label: 'שם פרטי', placeholder: 'למשל: דנה' },
-      { key: 'last_name', label: 'שם משפחה', placeholder: 'למשל: כהן' },
-      { key: 'phone', label: 'טלפון', placeholder: '050-1234567' },
-      { key: 'email', label: 'אימייל', placeholder: 'name@example.com' },
-      { key: 'organization', label: 'חברה', placeholder: 'שם החברה' },
-      { key: 'title', label: 'תפקיד', placeholder: 'מנהל/ת מכירות' },
-      { key: 'address', label: 'כתובת', placeholder: 'רחוב, עיר' },
-      { key: 'notes', label: 'הערה', placeholder: 'הערות נוספות' },
+      { key: 'first_name', textKey: 'fields.first_name' },
+      { key: 'last_name', textKey: 'fields.last_name' },
+      { key: 'phone', textKey: 'fields.phone' },
+      { key: 'email', textKey: 'fields.email' },
+      { key: 'organization', textKey: 'fields.organization' },
+      { key: 'title', textKey: 'fields.title' },
+      { key: 'address', textKey: 'fields.address' },
+      { key: 'notes', textKey: 'fields.notes' },
     ];
 
     // ---- schema state ----
@@ -55,13 +55,13 @@
 
     function saveSchema() {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(schema)); }
-      catch (e) { toast('שמירה בהתקן לא אפשרית'); }
+      catch (e) { toast(t('toast.storage_error')); }
     }
 
     function activeTargets() {
       const out = [];
       STANDARD_FIELDS.forEach(function (s) {
-        if (schema.standards[s.key]) out.push({ key: s.key, label: s.label, type: 'standard', xname: '' });
+        if (schema.standards[s.key]) out.push({ key: s.key, label: t(s.textKey), type: 'standard', xname: '' });
       });
       schema.customs.forEach(function (c) {
         if (c.key && c.label.trim()) out.push({ key: c.key, label: c.label.trim(), type: 'custom', xname: c.xname });
@@ -132,7 +132,7 @@
         const url = URL.createObjectURL(file);
         const img = new Image();
         img.onload = function () { resolve(img); };
-        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('לא ניתן לקרוא את התמונה')); };
+        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error(t('status.image_read_error'))); };
         img.src = url;
       });
     }
@@ -155,7 +155,7 @@
 
     function setFile(file) {
       if (!file || !file.type || !file.type.startsWith('image/')) {
-        toast('נא לבחור קובץ תמונה');
+        toast(t('toast.not_image'));
         return;
       }
       selectedFile = file;
@@ -183,7 +183,7 @@
       for (let i = 0; i < items.length; i++) {
         if (items[i].type && items[i].type.indexOf('image/') === 0) {
           const f = items[i].getAsFile();
-          if (f) { setFile(f); toast('התמונה הודבקה מהלוח'); break; }
+          if (f) { setFile(f); toast(t('toast.pasted')); break; }
         }
       }
     });
@@ -216,7 +216,7 @@
     async function analyze() {
       if (!selectedFile) return;
       const targets = activeTargets();
-      if (!targets.length) { toast('לא הוגדרו שדות — פתחו את הגדרות השדות'); return; }
+      if (!targets.length) { toast(t('toast.no_fields')); return; }
       setStatus('', false);
       setLoading(true);
       try {
@@ -231,7 +231,7 @@
           }),
         });
         const data = await res.json().catch(function () { return {}; });
-        if (!res.ok) throw new Error(data.error || 'השרת החזיר שגיאה');
+        if (!res.ok) throw new Error(data.error || t('status.server_error'));
         const columns = Array.isArray(data.columns) ? data.columns : [];
         mappingRows = columns.map(function (c) {
           const text = typeof c.original_text === 'string'
@@ -243,13 +243,13 @@
         renderResults();
         showResults();
         if (mappingRows.length) {
-          toast('זוהו ' + mappingRows.length + ' שורות · נבחרה יעד לכל שורה');
+          toast(t('toast.rows_found', { n: mappingRows.length }));
         } else {
-          setStatus('לא זוהו נתונים בתמונה. נסו תמונה חדה יותר.', true);
+          setStatus(t('status.no_data'), true);
         }
       } catch (err) {
         setLoading(false);
-        setStatus(err && err.message ? err.message : 'אירעה שגיאה, נסו שוב', true);
+        setStatus(err && err.message ? err.message : t('status.generic_error'), true);
       }
     }
 
@@ -263,12 +263,12 @@
       const metaEl = document.getElementById('resultsMeta');
 
       if (!mappingRows.length) {
-        wrap.innerHTML = '<p class="rounded-xl bg-slate-800/60 px-4 py-6 text-center text-sm text-slate-400">לא זוהו שורות בתמונה.</p>';
+        wrap.innerHTML = '<p class="rounded-xl bg-slate-800/60 px-4 py-6 text-center text-sm text-slate-400">' + t('results.empty') + '</p>';
         metaEl.classList.add('hidden');
         return;
       }
 
-      countEl.textContent = mappingRows.length + ' שורות זוהו';
+      countEl.textContent = mappingRows.length + ' ' + t('results.count');
       metaEl.classList.remove('hidden');
 
       const targets = activeTargets();
@@ -281,7 +281,7 @@
 
         const head = document.createElement('div');
         head.className = 'mb-2 flex items-center gap-2';
-        head.innerHTML = '<span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-bold text-cyan-300 ring-1 ring-slate-700"></span><span class="text-[11px] text-slate-500">שורה שזוהתה</span>';
+        head.innerHTML = '<span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-bold text-cyan-300 ring-1 ring-slate-700"></span><span class="text-[11px] text-slate-500">' + t('results.row_label') + '</span>';
         head.firstElementChild.textContent = String(idx + 1);
 
         const input = document.createElement('input');
@@ -295,7 +295,7 @@
         select.className = 'field-input mt-2';
         if (stdOpts.length) {
           const og = document.createElement('optgroup');
-          og.label = 'שדות סטנדרטיים';
+          og.label = t('results.group_standard');
           stdOpts.forEach(function (t) {
             const o = document.createElement('option');
             o.value = t.key;
@@ -306,7 +306,7 @@
         }
         if (customOpts.length) {
           const og = document.createElement('optgroup');
-          og.label = 'שדות מותאמים';
+          og.label = t('results.group_custom');
           customOpts.forEach(function (t) {
             const o = document.createElement('option');
             o.value = t.key;
@@ -317,7 +317,7 @@
         }
         const ig = document.createElement('option');
         ig.value = 'ignore';
-        ig.textContent = 'התעלם';
+        ig.textContent = t('results.ignore');
         select.appendChild(ig);
 
         const hasOpt = Array.prototype.some.call(select.options, function (o) { return o.value === row.target; });
@@ -452,7 +452,7 @@
         return r.target !== 'ignore' && (r.original_text || '').trim();
       });
       if (!any) {
-        toast('לא נבחרו שורות למיפוי — בחרו יעד לכל שורה או סמנו "התעלם"');
+        toast(t('toast.no_mapping'));
         return;
       }
       const vcf = buildVCard();
@@ -471,7 +471,7 @@
       a.click();
       a.remove();
       setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-      toast('קובץ ה-vCard נוצר · פתחו אותו כדי לשמור באנשי הקשר');
+      toast(t('toast.vcard_ready'));
     });
 
     // ---- config modal ----
@@ -487,7 +487,7 @@
         label.className = 'flex cursor-pointer items-center justify-between gap-2 rounded-xl bg-slate-800/70 px-3 py-2.5 ring-1 ring-slate-700/60 transition hover:ring-cyan-500/40';
         label.innerHTML =
           '<input type="checkbox" class="peer sr-only">' +
-          '<span class="text-sm font-medium">' + f.label + '</span>' +
+          '<span class="text-sm font-medium">' + t(f.textKey) + '</span>' +
           '<span class="relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors peer-checked:bg-cyan-500 bg-slate-600">' +
           '<span class="absolute start-0.5 h-4 w-4 rounded-full bg-white shadow transition-all peer-checked:start-4"></span></span>';
         const cb = label.querySelector('input');
@@ -501,7 +501,7 @@
       const wrap = document.getElementById('customFieldsList');
       wrap.innerHTML = '';
       if (!schema.customs.length) {
-        wrap.innerHTML = '<p class="rounded-lg bg-slate-800/50 px-3 py-2 text-xs text-slate-400">לא הוגדרו שדות מותאמים. לדוגמה: תעודת זהות, מידת חולצה…</p>';
+        wrap.innerHTML = '<p class="rounded-lg bg-slate-800/50 px-3 py-2 text-xs text-slate-400">' + t('config.empty_custom') + '</p>';
         return;
       }
       schema.customs.forEach(function (c, idx) {
@@ -510,12 +510,12 @@
         row.dataset.key = c.key;
         row.innerHTML =
           '<div class="flex gap-2">' +
-          '<input type="text" class="custom-name field-input flex-1" placeholder="שם השדה, למשל: תעודת זהות" value="' + escapeAttr(c.label) + '">' +
-          '<button type="button" class="custom-remove flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-slate-900 text-slate-400 ring-1 ring-slate-700 transition hover:text-rose-400" aria-label="הסר שדה">' +
+          '<input type="text" class="custom-name field-input flex-1" placeholder="' + t('config.name_placeholder') + '" value="' + escapeAttr(c.label) + '">' +
+          '<button type="button" class="custom-remove flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-slate-900 text-slate-400 ring-1 ring-slate-700 transition hover:text-rose-400" aria-label="' + t('config.remove') + '">' +
           '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>' +
           '</button>' +
           '</div>' +
-          '<input type="text" class="custom-desc field-input mt-2" placeholder="תיאור (אופציונלי)" value="' + escapeAttr(c.description || '') + '">';
+          '<input type="text" class="custom-desc field-input mt-2" placeholder="' + t('config.desc_placeholder') + '" value="' + escapeAttr(c.description || '') + '">';
         const nameInput = row.querySelector('.custom-name');
         const descInput = row.querySelector('.custom-desc');
         nameInput.addEventListener('input', function () {
@@ -543,7 +543,7 @@
       wrap.classList.remove('hidden');
       const p = document.createElement('p');
       p.className = 'w-full text-xs text-slate-500';
-      p.textContent = 'שדות המיפוי הפעילים:';
+      p.textContent = t('scan.active_fields');
       wrap.appendChild(p);
       targets.forEach(function (f) {
         const span = document.createElement('span');
@@ -585,7 +585,7 @@
       renderSchemaChips();
       closeConfig();
       if (!resultsSection.classList.contains('hidden')) renderResults();
-      toast('הגדרות השדות נשמרו');
+      toast(t('toast.config_saved'));
     });
     document.getElementById('addCustomBtn').addEventListener('click', function () {
       schema.customs.push({ key: '', label: '', description: '', xname: '' });

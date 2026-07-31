@@ -1,4 +1,4 @@
-# מגע (Contact Importer)
+# ייבוא אנשי קשר
 
 Hebrew business-card scanner PWA. Take a photo, detect text lines with Gemini, map them to contact fields, and export a vCard.
 
