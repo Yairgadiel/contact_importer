@@ -97,21 +97,36 @@ export default async function handler(req, res) {
     },
   };
 
-  let resp;
-  try {
-    resp = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-  } catch (err) {
-    return res.status(502).json({ error: `Could not reach the Gemini API: ${err.message}` });
+  const MAX_ATTEMPTS = 4;
+  const BACKOFF_MS = [1000, 2000, 4000];
+
+  let resp = null;
+  let lastBody = null;
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt - 1] || 8000));
+    try {
+      resp = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      lastBody = { error: { message: `Could not reach the Gemini API: ${err.message}` } };
+      continue;
+    }
+    lastBody = await resp.json().catch(() => ({}));
+    if (resp.ok) break;
+    const msg = lastBody?.error?.message || '';
+    const transient = resp.status === 429 || resp.status >= 500 || /high demand|temporar/i.test(msg);
+    if (!transient) break;
   }
 
-  const gemini = await resp.json().catch(() => ({}));
-  if (!resp.ok) {
-    const msg = gemini?.error?.message || `Gemini API error (HTTP ${resp.status})`;
-    return res.status(resp.status >= 500 ? 502 : resp.status).json({ error: msg });
+  const gemini = lastBody || {};
+  if (!resp || !resp.ok) {
+    const msg = gemini?.error?.message || `Gemini API error (HTTP ${resp ? resp.status : 'unknown'})`;
+    const status = resp && resp.status >= 500 ? 502 : resp ? resp.status : 502;
+    return res.status(status).json({ error: msg });
   }
 
   const text = (gemini?.candidates?.[0]?.content?.parts || [])
