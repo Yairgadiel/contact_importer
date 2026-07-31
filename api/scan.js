@@ -1,7 +1,7 @@
 export const config = { maxDuration: 60 };
 
 const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
     ],
     generationConfig: {
       response_mime_type: 'application/json',
-      temperature: 0.1,
+      thinking_level: 'low',
     },
   };
 
