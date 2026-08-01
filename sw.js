@@ -1,4 +1,4 @@
-var CACHE = 'maga-v2';
+var CACHE = 'maga-v3';
 var PRECACHE = [
   './',
   './index.html',
@@ -6,7 +6,9 @@ var PRECACHE = [
   './app.js',
   './styles.css',
   './i18n.js',
-  'https://cdn.tailwindcss.com'
+  'https://cdn.tailwindcss.com',
+  'https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css',
+  'https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js'
 ];
 
 self.addEventListener('install', function (event) {

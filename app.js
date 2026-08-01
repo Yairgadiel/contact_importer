@@ -145,11 +145,25 @@
     const spinner = document.getElementById('spinner');
     const toastInner = document.getElementById('toastInner');
 
+    const cropModal = document.getElementById('cropModal');
+    const cropImage = document.getElementById('cropImage');
+    const cropBox = document.getElementById('cropBox');
+    const cropZoomIn = document.getElementById('cropZoomIn');
+    const cropZoomOut = document.getElementById('cropZoomOut');
+    const cropZoomRange = document.getElementById('cropZoomRange');
+    const cropRatioToggle = document.getElementById('cropRatioToggle');
+    const cropConfirmBtn = document.getElementById('cropConfirmBtn');
+    const cropCancelBtn = document.getElementById('cropCancelBtn');
+
     let selectedFile = null;
     let mappingContacts = [];
     let modalOpen = false;
     let snapshot = null;
     let toastTimer = null;
+    let cropper = null;
+    let pendingCropUrl = null;
+    let cropFileBaseName = 'card';
+    let cropRatioCard = false;
 
     // ---- image handling ----
     function loadImage(file) {
@@ -184,12 +198,86 @@
         toast(t('toast.not_image'));
         return;
       }
-      selectedFile = file;
-      if (preview.src) URL.revokeObjectURL(preview.src);
-      preview.src = URL.createObjectURL(file);
-      preview.classList.remove('hidden');
-      analyzeBtn.disabled = false;
+      openCropModal(file);
     }
+
+    // ---- crop modal ----
+    function openCropModal(file) {
+      if (cropper) { cropper.destroy(); cropper = null; }
+      if (pendingCropUrl) { URL.revokeObjectURL(pendingCropUrl); pendingCropUrl = null; }
+      cropFileBaseName = (file.name || 'card').replace(/\.[^.]+$/, '');
+      cropRatioCard = false;
+      cropRatioToggle.textContent = t('crop.card_ratio');
+      pendingCropUrl = URL.createObjectURL(file);
+      cropImage.src = pendingCropUrl;
+      cropZoomRange.value = '1';
+      cropModal.classList.remove('hidden');
+      cropModal.classList.add('flex');
+      document.body.classList.add('overflow-hidden');
+      cropImage.onload = function () {
+        cropper = new Cropper(cropImage, {
+          viewMode: 1,
+          dragMode: 'move',
+          autoCropArea: 0.9,
+          responsive: true,
+          background: false,
+          rotatable: false,
+          scalable: false,
+          zoomable: true,
+          aspectRatio: NaN,
+        });
+        syncZoomRange();
+      };
+    }
+
+    function closeCropModal() {
+      if (cropper) { cropper.destroy(); cropper = null; }
+      if (pendingCropUrl) { URL.revokeObjectURL(pendingCropUrl); pendingCropUrl = null; }
+      cropModal.classList.add('hidden');
+      cropModal.classList.remove('flex');
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    function syncZoomRange() {
+      if (!cropper) return;
+      const img = cropper.getImageData();
+      const scale = img.width / img.naturalWidth;
+      cropZoomRange.value = String(Math.min(3, Math.max(0.2, scale.toFixed(2))));
+    }
+
+    function confirmCrop() {
+      if (!cropper) return;
+      const canvas = cropper.getCroppedCanvas({
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageSmoothingQuality: 'high',
+        fillColor: '#fff',
+      });
+      closeCropModal();
+      canvas.toBlob(function (blob) {
+        if (!blob) { toast(t('status.image_read_error')); return; }
+        const f = new File([blob], cropFileBaseName + '.jpg', { type: 'image/jpeg' });
+        selectedFile = f;
+        if (preview.src) URL.revokeObjectURL(preview.src);
+        preview.src = canvas.toDataURL('image/jpeg', 0.9);
+        preview.classList.remove('hidden');
+        analyzeBtn.disabled = false;
+      }, 'image/jpeg', 0.9);
+    }
+
+    cropZoomIn.addEventListener('click', function () { if (cropper) cropper.zoom(0.15); });
+    cropZoomOut.addEventListener('click', function () { if (cropper) cropper.zoom(-0.15); });
+    cropZoomRange.addEventListener('input', function () {
+      if (cropper) cropper.zoomTo(parseFloat(cropZoomRange.value));
+    });
+    cropRatioToggle.addEventListener('click', function () {
+      if (!cropper) return;
+      cropRatioCard = !cropRatioCard;
+      cropper.setAspectRatio(cropRatioCard ? 1.75 : NaN);
+      cropRatioToggle.textContent = cropRatioCard ? t('crop.free') : t('crop.card_ratio');
+    });
+    cropConfirmBtn.addEventListener('click', confirmCrop);
+    cropCancelBtn.addEventListener('click', closeCropModal);
 
     fileInput.addEventListener('change', function () {
       if (fileInput.files && fileInput.files[0]) setFile(fileInput.files[0]);
@@ -201,7 +289,7 @@
     cameraBtn.addEventListener('click', function () { cameraInput.click(); });
 
     document.addEventListener('paste', function (e) {
-      if (modalOpen) return;
+      if (modalOpen || !cropModal.classList.contains('hidden')) return;
       const el = document.activeElement;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
       const items = e.clipboardData && e.clipboardData.items;
